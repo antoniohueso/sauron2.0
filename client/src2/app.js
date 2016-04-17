@@ -9,6 +9,8 @@ import { SprintView } from "./views/sprint";
 import { BacklogView } from "./views/backlog";
 import { HistoricoView } from "./views/historico";
 import { SeguimientoView } from "./views/seguimiento";
+import "/jspm_packages/npm/moment@2.12.0/locale/es";
+
 
 @observer
 export class Main extends React.Component {

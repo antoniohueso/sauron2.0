@@ -81,7 +81,7 @@ export class DataTable extends React.Component {
                         {colDef.map(col => {
                             return (
                                 <td key={col.property} width={col.size}>
-                                    {col.format?col.format(col.property,row,col):row[col.property]}
+                                    {col.format?col.format(col.property,row,col):_.get(row,col.property)}
                                 </td>
                             );
                         })}
@@ -146,5 +146,49 @@ export class MenuBar extends React.Component {
 }
 
 
+export class SectionTable extends React.Component {
 
+    static propTypes = {
+        colDef: React.PropTypes.array.isRequired,
+        data: React.PropTypes.object.isRequired,
+    }
+
+
+    render() {
+
+        if(!this.props.data) return false;
+
+        const colDef = this.props.colDef || [];
+        const data = this.props.data || [];
+
+        return (
+            <table className="table-resumen table table-bordered SectionTable">
+                <tbody>
+                {colDef.map((col,index) => {
+
+                    if(col.type == 'section') {
+                        return (
+                            <tr key={index} className={classNames(col.className)}>
+                                <th colSpan={col.size || null}>
+                                    <h4>
+                                        <i className={classNames({glyphicon:col.icon!=null}, col.icon)}></i>
+                                        <span> {_.isFunction(col.header)?col.header(col):col.header}</span>
+                                    </h4>
+                                </th>
+                            </tr>
+                        );
+                    }
+
+                    return(
+                        <tr key={index}>
+                            <th colSpan={col.size || null}>{_.isFunction(col.header)?col.header(col):col.header}</th>
+                            <td>{col.format?col.format(col.property,data,col): _.get(data,col.property)}</td>
+                        </tr>
+                    );
+                })}
+                </tbody>
+            </table>
+        );
+    }
+}
 
