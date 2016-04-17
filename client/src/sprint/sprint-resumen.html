@@ -1,0 +1,23 @@
+<template>
+
+    <require from="./resumen.html"></require>
+
+    <div if.bind="sprint" class="row">
+
+        <div class="col-md-12 report-title">
+            <h3>Información general</h3>
+            <hr />
+        </div>
+
+        <div class="col-md-12">
+            <resumen sprint.bind="sprint.sprint" project.bind="sprint.project"></resumen>
+        </div>
+
+        <div class="col-md-12">
+
+        </div>
+
+    </div>
+
+
+</template>

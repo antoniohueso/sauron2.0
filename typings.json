@@ -1,0 +1,21 @@
+{
+  "name": "sauron2.0",
+  "version": false,
+  "dependencies": {
+    "bluebird": "registry:npm/bluebird#3.3.4+20160411163813",
+    "moment": "registry:npm/moment#2.10.5+20160211003958"
+  },
+  "ambientDependencies": {
+    "express": "registry:dt/express#4.0.0+20160317120654",
+    "express-serve-static-core": "registry:dt/express-serve-static-core#0.0.0+20160322035842",
+    "lodash": "registry:dt/lodash#3.10.0+20160330154726",
+    "mime": "registry:dt/mime#0.0.0+20160316155526",
+    "morgan": "registry:dt/morgan#1.2.2+20160317120654",
+    "mysql": "registry:dt/mysql#0.0.0+20160316155526",
+    "node": "registry:dt/node#4.0.0+20160412142033",
+    "react": "registry:dt/react#0.14.0+20160412154040",
+    "react-dom": "registry:dt/react-dom#0.14.0+20160412154040",
+    "serve-static": "registry:dt/serve-static#1.7.1+20160104095738",
+    "winston": "registry:dt/winston#0.0.0+20160324163241"
+  }
+}

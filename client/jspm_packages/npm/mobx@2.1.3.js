@@ -1,0 +1,1 @@
+module.exports = require("npm:mobx@2.1.3/lib/mobx.js");
