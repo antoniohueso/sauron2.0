@@ -4,8 +4,8 @@ export class App {
 
     configureRouter(config, router) {
         config.title = 'Sauron';
+        config.options.pushState = true;
         config.map([
-
             {
                 route: "/seguimiento/search",
                 name: 'seguimiento',
