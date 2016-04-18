@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "bluebird": "^3.3.5",
+    "elasticsearch": "^11.0.1",
     "express": "^4.13.4",
     "lodash": "^4.11.1",
     "moment": "^2.12.0",
