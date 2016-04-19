@@ -1,5 +1,7 @@
 export var config = {
 
+    jiraUrl: "http://10.0.100.118:8085/jira/rest",
+
     database: {
 
         prod: {
