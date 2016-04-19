@@ -58,7 +58,7 @@ CREATE OR REPLACE VIEW user AS
 
 
 
-/* Vista de setalle de cada issue sin hacer join con sprint */
+/* Vista de detalle de cada issue sin hacer join con sprint */
 CREATE OR REPLACE VIEW issues AS
   select i.id as id,
          concat(p.pkey,'-',i.issuenum) issuekey,
@@ -130,10 +130,17 @@ CREATE OR REPLACE VIEW issues AS
     left join jiradb.issuelink epica on i.id = epica.destination and epica.linktype = 10200
     left join jiradb.jiraissue i_epica on i_epica.id = epica.source;
 
-CREATE OR REPLACE VIEW comments AS
-SELECT ja.id, ja.issueid as issue_id,ja.AUTHOR as author, ja.actionbody as comment, ja.CREATED as created
-  , ja.UPDATED as updated , ja.UPDATEAUTHOR as updateauthor
+CREATE OR REPLACE VIEW issuecomments AS
+SELECT ja.id,
+       ja.issueid as issue_id,
+       u.id as author_id,
+       u.user_name as author_user_name,
+       u.display_name as author_display_name,
+       u.email_address as author_email_address,
+       ja.actionbody as comment,
+       ja.CREATED as created
 FROM jiradb.jiraaction ja
+  left join jiradb.cwd_user u ON u.user_name = ja.author
 WHERE ja.actiontype = 'comment';
 
 CREATE OR REPLACE VIEW sprint AS
@@ -222,6 +229,23 @@ CREATE OR REPLACE VIEW issueversion AS
   INNER JOIN version v ON v.id = na.SINK_NODE_ID
   where na.ASSOCIATION_TYPE='IssueFixVersion';
 
+CREATE OR REPLACE VIEW issuechangelog AS
+select cg.id as id,
+       cg.issueid as issue_id,
+       lower(ci.field) as type,
+       cg.created as created,
+       u.id as author_id,
+       u.user_name as author_user_name,
+       u.display_name as author_display_name,
+       u.email_address as author_email_address,
+       ci.OLDVALUE as old_id,
+       ci.NEWVALUE as new_id,
+       ci.OLDSTRING as old_name,
+       ci.NEWSTRING as new_name
+from jiradb.changegroup cg
+  inner join jiradb.changeitem ci on ci.groupid = cg.id
+  left join jiradb.cwd_user u ON u.user_name = cg.author;
+
 CREATE OR REPLACE VIEW worklog AS
   select w.id as id,
          au.id as author_id,
@@ -235,6 +259,8 @@ CREATE OR REPLACE VIEW worklog AS
   from jiradb.worklog w
     inner join jiradb.cwd_user au ON au.user_name = w.author
     left join jiradb.cwd_user aup ON aup.user_name = w.updateauthor;
+
+
 
 /**
  BEGIN Vista que devuelve la lista de responsables de un componente

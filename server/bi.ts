@@ -19,15 +19,21 @@ const hasta = moment(new Date());
 desde.subtract(5,  'month');
 
 
+function normalizeIssues(issues:Array<any>) {
 
-database.query("Select * from issues where project_key = ? and updated between ? and ?",[projectKey,desde.toDate(),hasta.toDate()])
+    const issuesIds:Array<number> = _.map(issues, issue => issue.id);
+    const issuesIdx:any = _.groupBy(issues, "id");
+
+
+
+}
+
+
+database.query("Select * from issues where project_key = 'SC'")
     .then(issues => {
 
-        const issuesIds:Array<number> = _.map(issues, issue => issue.id);
-        const issuesIdx:any = _.groupBy(issues, "id");
-
         repository.completeIssueInfo(issues).then(issues => {
-            issues.filter(issue => issue.versions.length > 2).forEach(issue => {
+            issues.forEach(issue => {
                 console.log(issue)
             });
 
@@ -39,4 +45,6 @@ database.query("Select * from issues where project_key = ? and updated between ?
 }).catch(err => {
     console.log(err);
 });
+
+
 

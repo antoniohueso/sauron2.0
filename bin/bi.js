@@ -14,12 +14,14 @@ const projectKey = "SC";
 const desde = moment(new Date());
 const hasta = moment(new Date());
 desde.subtract(5, 'month');
-util_1.database.query("Select * from issues where project_key = ? and updated between ? and ?", [projectKey, desde.toDate(), hasta.toDate()])
-    .then(issues => {
+function normalizeIssues(issues) {
     const issuesIds = _.map(issues, issue => issue.id);
     const issuesIdx = _.groupBy(issues, "id");
+}
+util_1.database.query("Select * from issues where project_key = 'SC'")
+    .then(issues => {
     repository_1.repository.completeIssueInfo(issues).then(issues => {
-        issues.filter(issue => issue.versions.length > 2).forEach(issue => {
+        issues.forEach(issue => {
             console.log(issue);
         });
         util_1.database.shutdown();

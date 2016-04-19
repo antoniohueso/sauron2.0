@@ -3,6 +3,7 @@ import * as moment from "moment";
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 const fetch = require("node-fetch");
+const querystring = require("querystring")
 
 
 class JiraRest {
@@ -10,7 +11,6 @@ class JiraRest {
     jiraUrlBase:string;
 
     headers:any = {
-        'Accept': 'application/json',
         'Content-Type': 'application/json'
     }
 
@@ -19,7 +19,7 @@ class JiraRest {
     }
 
     login(username,password) {
-        return this.fetch("/auth/1/session",{
+        return this.post("/auth/1/session",{
             username:username,
             password:password
         })
@@ -31,81 +31,80 @@ class JiraRest {
     }
 
     get(url,data) {
-        return fetch(this.jiraUrlBase + url, {
-            method: "GET",
-            headers: this.headers,
-            body: data
+
+        console.log(this.jiraUrlBase + url + (data?"?"+querystring.encode(data):""));
+
+        return fetch(this.jiraUrlBase + url + (data?"?"+querystring.encode(data):""), {
+            headers: this.headers
         }).then(r => r.json());
     }
 
-    fetch(url,data) {
+    post(url,data) {
         return fetch(this.jiraUrlBase + url, {
-            method: data?"POST":"GET",
+            method: "POST",
             headers: this.headers,
             body: data?JSON.stringify(data):null
         }).then(r => r.json());
     }
 
-    search(jql:string,maxResults?:number) {
+    search(jql:string,pmaxResults?:number) {
 
-        maxResults = maxResults || 50;
+        const maxResults = pmaxResults || 200;
 
         const data:any = {
             jql: jql,
             startAt: 0,
             maxResults: maxResults,
-            expand:[ "changelog" ],
+            expand:["changelog"],
             fields: [
                 "*all"
             ]
-        }
+        };
 
-        return this.fetch("/api/2/search",data).then((r:any) => {
+        return this.post("/api/2/search",data).then((r:any) => {
 
-            r.total -= maxResults;
+            const rdata = this._normalizeIssues(r.issues);
 
-            if(r.total <= maxResults) return r.issues.map(rissue => {
-                rissue.fields["issuekey"] = rissue.key;
-                return rissue.fields;
-            });
+            if(r.total <= maxResults) return rdata;
 
             const nloop = Math.floor((r.total / maxResults)) + (r.total % maxResults > 0 ? 1 : 0);
 
             const promises = [];
 
-            for(let i = 0 ; i < nloop; i++ ) {
-                promises.push(this.fetch("/api/2/search",{
-                    jql: jql,
-                    startAt: maxResults * (i+1),
-                    maxResults: maxResults,
-                    fields: [
-                        "*all"
-                    ],
-                    expand: [ "changelog"]
-                }));
+            for(let i = 1 ; i < nloop; i++ ) {
+
+                const odata = _.clone(data);
+                odata.startAt = maxResults * i;
+
+                promises.push(this.post("/api/2/search", odata));
             }
-
-            const rdata = r.issues.map(rissue => {
-                rissue.fields["issuekey"] = rissue.key;
-                return rissue.fields;
-            });
-
             return Promise.all(promises).then(results => {
 
-                results.forEach(r => {
-                    rdata.concat(r.map((rissue:any) => {
-                        rissue.issues.fields["issuekey"] = rissue.issuekey;
-                        return rissue.fields;
-                    }));
-                });
-                return rdata;
+                return rdata.concat(_.chain(results).map((r:any) => this._normalizeIssues(r.issues)).flatten().value());
             });
 
         });
 
     }
 
+    _normalizeIssues(rissues) {
 
+        if(!rissues) return;
+
+        return rissues.map((rissue:any) => {
+            const issue = rissue.fields;
+            issue.issuekey = rissue.key;
+            issue.changelog = rissue.changelog;
+
+
+
+            return issue;
+        });
+    }
+
+    _normalizeSprints(issue) {
+        issue.sprints = _.map(issue.customfield_10005)
+    }
 
 }
 
@@ -114,55 +113,21 @@ const jira = new JiraRest(config.jiraUrl);
 jira.login("ahg","12345").then(res => {
 
     console.log("Si!");
+/*
+    return jira.get("/api/2/issue/GI-8", {expand:"changelog"}).then(r => {
+        console.log("PAHA", r);
+        return r;
+    })
+*/
 
-    jira.fetch("/api/2/issue/GI-8?expand=changelog",null).then(r => {
-        console.log("PAHA", r.changelog.total);
+    return jira.search("issuekey = SC-491").then(res =>{
+        res[0].changelog.histories.forEach(h => {
+            //console.log(h.items.filter(it => it.field == "Sprint"));
+            //console.log(h.items);
+        });
+        //console.log(res);
     })
 
-    /*
-    jira.search("project = SC and issuekey = SC-485",200).then(res =>{
-        console.log(res);
-    })*/
 }).catch(err => {
     console.log("ERROR: ",err);
 });
-
-/*
-fetch(config.jiraUrl + "/auth/1/session",
-    {
-        method: 'POST',
-        body: JSON.stringify({
-            username:'ahg',
-            password:'12345'
-        }),
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-
-    })
-    .then(res => res.json())
-    .then((res:any) =>{
-
-        const headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-
-        headers["Cookie"] = res.session.name + "=" + res.session.value;
-
-        console.log(headers);
-
-        return fetch(config.jiraUrl + "/auth/1/session",{
-            headers: headers
-        })
-            .then(res => res.json())
-            .then(res => {
-                console.log(res);
-            });
-
-
-}).catch(err => {
-    console.log("Error ",err);
-});
-*/

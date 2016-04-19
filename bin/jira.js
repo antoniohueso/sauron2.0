@@ -1,17 +1,18 @@
 "use strict";
 const config_1 = require("./config");
 const Promise = require("bluebird");
+const _ = require("lodash");
 const fetch = require("node-fetch");
+const querystring = require("querystring");
 class JiraRest {
     constructor(jiraUrlBase) {
         this.headers = {
-            'Accept': 'application/json',
             'Content-Type': 'application/json'
         };
         this.jiraUrlBase = jiraUrlBase;
     }
     login(username, password) {
-        return this.fetch("/auth/1/session", {
+        return this.post("/auth/1/session", {
             username: username,
             password: password
         })
@@ -21,21 +22,20 @@ class JiraRest {
         });
     }
     get(url, data) {
-        return fetch(this.jiraUrlBase + url, {
-            method: "GET",
-            headers: this.headers,
-            body: data
+        console.log(this.jiraUrlBase + url + (data ? "?" + querystring.encode(data) : ""));
+        return fetch(this.jiraUrlBase + url + (data ? "?" + querystring.encode(data) : ""), {
+            headers: this.headers
         }).then(r => r.json());
     }
-    fetch(url, data) {
+    post(url, data) {
         return fetch(this.jiraUrlBase + url, {
-            method: data ? "POST" : "GET",
+            method: "POST",
             headers: this.headers,
             body: data ? JSON.stringify(data) : null
         }).then(r => r.json());
     }
-    search(jql, maxResults) {
-        maxResults = maxResults || 50;
+    search(jql, pmaxResults) {
+        const maxResults = pmaxResults || 200;
         const data = {
             jql: jql,
             startAt: 0,
@@ -45,47 +45,42 @@ class JiraRest {
                 "*all"
             ]
         };
-        return this.fetch("/api/2/search", data).then((r) => {
-            r.total -= maxResults;
+        return this.post("/api/2/search", data).then((r) => {
+            const rdata = this._normalizeIssues(r.issues);
             if (r.total <= maxResults)
-                return r.issues.map(rissue => {
-                    rissue.fields["issuekey"] = rissue.key;
-                    return rissue.fields;
-                });
+                return rdata;
             const nloop = Math.floor((r.total / maxResults)) + (r.total % maxResults > 0 ? 1 : 0);
             const promises = [];
-            for (let i = 0; i < nloop; i++) {
-                promises.push(this.fetch("/api/2/search", {
-                    jql: jql,
-                    startAt: maxResults * (i + 1),
-                    maxResults: maxResults,
-                    fields: [
-                        "*all"
-                    ],
-                    expand: ["changelog"]
-                }));
+            for (let i = 1; i < nloop; i++) {
+                const odata = _.clone(data);
+                odata.startAt = maxResults * i;
+                promises.push(this.post("/api/2/search", odata));
             }
-            const rdata = r.issues.map(rissue => {
-                rissue.fields["issuekey"] = rissue.key;
-                return rissue.fields;
-            });
             return Promise.all(promises).then(results => {
-                results.forEach(r => {
-                    rdata.concat(r.map((rissue) => {
-                        rissue.issues.fields["issuekey"] = rissue.issuekey;
-                        return rissue.fields;
-                    }));
-                });
-                return rdata;
+                return rdata.concat(_.chain(results).map((r) => this._normalizeIssues(r.issues)).flatten().value());
             });
         });
+    }
+    _normalizeIssues(rissues) {
+        if (!rissues)
+            return;
+        return rissues.map((rissue) => {
+            const issue = rissue.fields;
+            issue.issuekey = rissue.key;
+            issue.changelog = rissue.changelog;
+            return issue;
+        });
+    }
+    _normalizeSprints(issue) {
+        issue.sprints = _.map(issue.customfield_10005);
     }
 }
 const jira = new JiraRest(config_1.config.jiraUrl);
 jira.login("ahg", "12345").then(res => {
     console.log("Si!");
-    jira.fetch("/api/2/issue/GI-8?expand=changelog", null).then(r => {
-        console.log("PAHA", r.changelog.total);
+    return jira.search("issuekey = SC-491").then(res => {
+        res[0].changelog.histories.forEach(h => {
+        });
     });
 }).catch(err => {
     console.log("ERROR: ", err);

@@ -11,6 +11,22 @@ const util_1 = require("./util");
 const Promise = require("bluebird");
 const _ = require("lodash");
 class Repository {
+    findChangeLogStatusOfIssues(aIssuesId) {
+        util_1.checkNotNull("aIssuesId", aIssuesId);
+        return util_1.database.query("select * from issuechangelog where issue_id in(?) and type = 'status' order by created", [aIssuesId]);
+    }
+    findChangeLogSprintOfIssues(aIssuesId) {
+        util_1.checkNotNull("aIssuesId", aIssuesId);
+        return util_1.database.query("select * from issuechangelog where issue_id in(?) and type = 'sprint' order by created", [aIssuesId]);
+    }
+    findCommentsOfIssues(aIssuesId) {
+        util_1.checkNotNull("aIssuesId", aIssuesId);
+        return util_1.database.query("select * from issuecomments where issue_id in(?) order by created", [aIssuesId]);
+    }
+    findSprintsOfIssues(aIssuesId) {
+        util_1.checkNotNull("aIssuesId", aIssuesId);
+        return util_1.database.query("select * from issuesprint where issue_id in(?)", [aIssuesId]);
+    }
     findComponentsOfIssues(aIssuesId) {
         util_1.checkNotNull("aIssuesId", aIssuesId);
         return util_1.database.query("select * from issuecomponent where issue_id in(?)", [aIssuesId]);
@@ -76,13 +92,71 @@ class Repository {
             const aIssuesId = issues.map(issue => issue.id);
             const data = yield Promise.all([
                 this.findComponentsOfIssues(aIssuesId),
-                this.findVersionsOfIssues(aIssuesId)
+                this.findVersionsOfIssues(aIssuesId),
+                this.findSprintsOfIssues(aIssuesId),
+                this.findChangeLogSprintOfIssues(aIssuesId),
+                this.findChangeLogStatusOfIssues(aIssuesId),
+                this.findCommentsOfIssues(aIssuesId)
             ]);
             var componentsIdx = _.groupBy(data[0], "issue_id");
             var versionsIdx = _.groupBy(data[1], "issue_id");
+            var sprintsIdx = _.groupBy(data[2], "issue_id");
+            const sprintChangeLog = [];
+            data[3].forEach(cl => {
+                const change = _.clone(cl);
+                const oldSp = (cl.old_id || "").split(",");
+                const newSp = (cl.new_id || "").split(",");
+                delete change.id;
+                delete change.new_id;
+                delete change.new_name;
+                delete change.old_id;
+                delete change.old_name;
+                if (cl.old_id == null) {
+                    change.action = "add";
+                    change.sprint_id = parseInt(_.last(newSp));
+                }
+                else if (cl.old_id.length < cl.new_id.length) {
+                    change.action = "add";
+                    change.sprint_id = parseInt(_.last(newSp));
+                }
+                else if (cl.old_id.length > cl.new_id.length) {
+                    change.action = "remove";
+                    change.sprint_id = parseInt(_.last(oldSp));
+                }
+                else if (cl.old_id.length == cl.new_id.length && cl.old_id != cl.new_id) {
+                    const newChange = _.clone(change);
+                    newChange.action = "remove";
+                    newChange.sprint_id = parseInt(_.last(oldSp));
+                    sprintChangeLog.push(newChange);
+                    change.action = "add";
+                    change.sprint_id = parseInt(_.last(newSp));
+                }
+                sprintChangeLog.push(change);
+            });
+            var sprintsChangeLogIdx = _.groupBy(sprintChangeLog, "issue_id");
+            const statusChangeLog = [];
+            data[4].forEach(s => {
+                const change = _.clone(s);
+                change.old_status_id = s.old_id;
+                change.old_status_name = s.old_name;
+                change.status_id = s.new_id;
+                change.status_name = s.new_name;
+                delete change.id;
+                delete change.new_id;
+                delete change.new_name;
+                delete change.old_id;
+                delete change.old_name;
+                statusChangeLog.push(change);
+            });
+            var statusChangeLogIdx = _.groupBy(statusChangeLog, "issue_id");
+            var commentsIdx = _.groupBy(data[5], "issue_id");
             issues.forEach((issue) => {
                 issue.components = componentsIdx[issue.id] ? componentsIdx[issue.id] : [];
                 issue.versions = versionsIdx[issue.id] ? versionsIdx[issue.id] : [];
+                issue.sprints = sprintsIdx[issue.id] ? sprintsIdx[issue.id] : [];
+                issue.sprintsChangeLog = sprintsChangeLogIdx[issue.id] ? sprintsChangeLogIdx[issue.id] : [];
+                issue.statusChangeLog = statusChangeLogIdx[issue.id] ? statusChangeLogIdx[issue.id] : [];
+                issue.comments = commentsIdx[issue.id] ? commentsIdx[issue.id] : [];
             });
             return issues;
         });
