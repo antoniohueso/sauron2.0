@@ -12,7 +12,6 @@ const client = new elasticsearch.Client({
     log: 'trace'
 });
 
-/*
 if (process.env.NODE_ENV == "production") {
     database.connect(config.database.prod);
 }
@@ -26,20 +25,13 @@ const hasta = moment(new Date());
 
 desde.subtract(5,  'month');
 
-
-
-database.query("Select * from issues where project_key = ?",[projectKey])
+database.query("Select * from issues where project_key = 'SC'")
     .then(issues => {
-
-        const issuesIds:Array<number> = _.map(issues, issue => issue.id);
-        const issuesIdx:any = _.groupBy(issues, "id");
 
         repository.completeIssueInfo(issues).then(issues => {
 
-            database.shutdown();
-
-            const arr = issues.map(issue => {
-                client.create({
+            const promises = issues.map(issue => {
+                client.index({
                     index: 'jira',
                     type: 'issues',
                     id: issue.id,
@@ -47,20 +39,19 @@ database.query("Select * from issues where project_key = ?",[projectKey])
                 })
             });
 
-            return Promise.all(arr).then(r => {
+            return Promise.all(promises).then(r => {
                 console.log("Total: ",r.length);
             })
 
+            database.shutdown();
         });
 
 
     }).catch(err => {
     console.log(err);
 });
-*/
 
-console.log("Mierda!");
-
+/*
 client.search({
     index: 'jira',
     body: {
@@ -76,3 +67,4 @@ client.search({
         console.log(issue._source.components);
     });
 });
+*/

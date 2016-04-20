@@ -19,15 +19,6 @@ const hasta = moment(new Date());
 desde.subtract(5,  'month');
 
 
-function normalizeIssues(issues:Array<any>) {
-
-    const issuesIds:Array<number> = _.map(issues, issue => issue.id);
-    const issuesIdx:any = _.groupBy(issues, "id");
-
-
-
-}
-
 
 database.query("Select * from issues where project_key = 'SC'")
     .then(issues => {
