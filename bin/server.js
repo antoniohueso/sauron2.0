@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 const util_1 = require("./util");
 const config_1 = require("./config");
+const Promise = require("bluebird");
 const morgan = require("morgan");
 const router_rest_sprint_1 = require("./router-rest-sprint");
 const router_rest_project_1 = require("./router-rest-project");
@@ -25,4 +26,11 @@ exports.app.get('*', function (request, response) {
 });
 exports.app.listen(process.env.NODE_PORT || 3000, () => {
     util_1.logger.info(`Sauron 2.0 server arrancado en el puerto ${process.env.NODE_PORT || 3000} en modo: ${!process.env.NODE_ENV ? 'DEVELOPMENT' : process.env.NODE_ENV.toUpperCase()}`);
+});
+const arr = [];
+for (let i = 0; i < 10; i++) {
+    arr.push(util_1.database.query("Select * from issues"));
+}
+Promise.all(arr).then(issues => {
+    console.log(issues.length);
 });

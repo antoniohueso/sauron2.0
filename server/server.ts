@@ -57,3 +57,15 @@ app.listen(process.env.NODE_PORT || 3000, () => {
     logger.info(`Sauron 2.0 server arrancado en el puerto ${process.env.NODE_PORT || 3000} en modo: ${!process.env.NODE_ENV?'DEVELOPMENT':process.env.NODE_ENV.toUpperCase()}`);
 });
 
+
+const arr = [];
+
+import * as Promise from "bluebird";
+
+for(let i = 0 ; i < 10; i++) {
+    arr.push(database.query("Select * from issues"));
+}
+
+Promise.all(arr).then(issues => {
+    console.log(issues.length);
+});
